@@ -1,0 +1,38 @@
+select
+    P.ID 'IdPedido',
+    DataDelivery Data_Delivery,
+    StatusExterno 'Status Moby',
+    (
+        select CodigoExterno 
+        from Pessoa (nolock) 
+        where Id = IdExpedidor
+    ) CD,    
+    P.CodigoExterno, 
+    PS.CodigoExterno 'Emissor da Ordem',
+    PS.Nome 'Cliente',
+    (select Nome from Cidade (nolock) where Id = IdCidade) 'Cidade',
+    (select Nome from UnidadeFederativa (nolock) where Id = (select IdUF from Estado (nolock) where Id = (select IdEstado from Cidade (nolock) where Id = IdCidade))) 'UF',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Data solicitação da agenda"."Date"') as datetime2) 'Data Solicitação Agenda',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Data de Agenda Sugerida"."Date"') as datetime2) 'Data de Agenda Sugerida',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Data da Confirmação da Agenda"."Date"') as datetime2) 'Data da Confirmação da Agenda',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Data agendada"."Date"') as datetime2) 'Data Agendada',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Peso total da delivery"') as float) 'Peso KG',
+    CAST(JSON_VALUE(ColunasExtras, N'$."Documento de transporte"') as varchar(200)) DT,
+    CAST(JSON_VALUE(ColunasExtras, N'$."Responsável Agendamento"') as varchar(200)) 'Responsável Agendamento',
+    (    
+        select top 1 Nome 
+        from EstacaoTrabalho ET (nolock)
+        join EstacaoTrabalhoPessoa ETP (nolock) on ETP.IdEstacaoTrabalho = ET.Id
+        where ETP.IdPessoa = IdCliente
+    ) 'Tipo de Estação',
+    (select Id from Carga (nolock) where Id = IdCarga) 'Id da Carga', 
+P.DataHoraCadastro,
+P.id,
+CAST(JSON_VALUE(ColunasExtras, N'$."Observação Status"') as varchar(200)) ObservacaoStatus,
+CAST(JSON_VALUE(ColunasExtras, N'$."Observação"') as varchar(200)) Observacao,
+CAST(JSON_VALUE(ColunasExtras, N'$."Pedido SAP"') as varchar) 'Pedido SAP',
+CAST(JSON_VALUE(ColunasExtras, N'$."Reagendamento"."Date"') as datetime2) 'Reagendamento',
+CAST(JSON_VALUE(ColunasExtras, N'$."Senha"') as varchar(200)) 'Senha'
+from Pedido P (nolock) 
+join Pessoa PS (nolock) on P.IdCliente = PS.Id
+where DataDelivery > '2023-05-01' and StatusExterno <> 'Cancelado'
