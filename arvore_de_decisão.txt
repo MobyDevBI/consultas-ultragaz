@@ -1,0 +1,124 @@
+SELECT SM.codigoexterno			AS 'Código Externo (DT)',
+	   O.Nome					AS 'Operação Monitoramento',
+       vi.datahoracadastro		AS 'Data de Cadastro',
+       SV.nome					AS 'Status Viagem',
+       ss.nome					AS 'Status Monitoramento',
+       V.placa					AS 'Placa',
+	   OV.Nome					AS 'Operação Veículo Tração',
+       V1.placa					AS 'Carreta',
+       V2.placa					AS 'Carreta 2',
+       P.nome					AS 'Proprietário',
+       j.Justificativa          AS 'Justificativa',
+       SMPPO.nome				AS 'Origem',
+	   SMPPO.Latitude			AS 'Latitude Origem',
+	   SMPPO.Longitude			AS 'Longitude Origem',
+       SMPPD.nome				AS 'Destino',
+	   SMPPD.Latitude			AS 'Latitude Destino',
+	   SMPPD.Longitude			AS 'Longitude Destino',
+	   TA.Nome					AS 'Alerta',
+	   A.DataHoraGeracao		AS 'Geração do Alerta',
+	   A.DataHoraCadastro		AS 'Cadastro do Alerta',
+	   L.Referencia				AS 'Local de Geração do Alerta',
+	   L.Latitude				AS 'Latitude Local do Alerta',
+	   L.Longitude				AS 'Longitude Local do Alerta',
+       AD.datahoracadastro		AS 'Data de Abertura Árvore Ocorrência',
+       AD.datafechamento		AS 'Data de Fechamento Árvore Ocorrência',
+	   AD.Observacao			AS 'Observação da Árvore',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idproblema = id
+               AND idtipo = 1)	AS 'Problema',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idcausa = id
+               AND idtipo = 2)	AS 'Causa',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idresposta = id
+               AND idtipo = 3)	AS 'Resposta',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idacao = id
+               AND idtipo = 4)	AS 'Acao',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idresultado = id
+               AND idtipo = 5)	AS 'Resultado',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idarearesponsavel = id
+               AND idtipo = 6)	AS 'Área Responsável',
+       (SELECT descricao
+        FROM   atributosarvoredecisao
+        WHERE  AD.idnivel = id
+               AND idtipo = 7)	AS 'Nível',
+       UA.nome					AS 'Analista'
+FROM   viagem vi
+	   JOIN ViagemPontoControle VPC
+			  ON VPC.IdViagem = VI.id
+       JOIN veiculo v
+			  ON vi.idveiculotracao = v.id
+	   LEFT JOIN Operacao OV
+			  ON OV.Id = V.IdOperacao
+       LEFT JOIN veiculo V1
+              ON V1.id = Vi.idprimeiracarreta
+       LEFT JOIN veiculo V2
+              ON V2.id = Vi.idsegundacarreta
+       LEFT JOIN statusviagem SV
+              ON SV.id = VI.idstatus
+       LEFT JOIN solicitacaomonitoramento sm
+              ON sm.id = VI.idsolicitacaomonitoramento
+       LEFT JOIN statussolicitacaomonitoramento ss
+              ON ss.id = sm.idstatus
+       LEFT JOIN pessoa p
+         ON p.id = V.idproprietario
+       LEFT JOIN operacao O
+              ON o.id = sm.idoperacao
+       LEFT JOIN arvoredecisaoocorrencia AD
+              ON AD.idviagem = VI.id
+	   LEFT JOIN Alerta A
+			  ON A.Id = AD.IdViagemAlerta
+	   LEFT JOIN Justificativa j
+	   	      ON j.Id = A.IdJustificativa
+	   LEFT JOIN  ConfiguracaoAlerta CA
+			  ON CA.Id = A.IdConfiguracaoAlerta
+	   LEFT JOIN TipoAlerta TA
+			  ON TA.Id = CA.IdTipoAlerta
+	   LEFT JOIN Localizacao L
+			  ON L.Id = A.IdLocalizacao
+       LEFT JOIN usuarioaplicacao UA
+              ON UA.id = AD.idanalista
+				OUTER apply (SELECT		 SMPPOI.id,
+                                 PC.nome,
+								 PC.Latitude,
+								 PC.Longitude,
+								 PO.CPF_CNPJ,
+                                 SMPPOI.idtipopontocontrole,
+                                 SMPPOI.datahoraprevisaoentrada,
+                                 SMPPOI.datahoraprevisaosaida,
+                                 SMPPOI.datahoraentrada,
+                                 SMPPOI.datahorasaida
+                    FROM   viagempontocontrole SMPPOI (NOLOCK)
+                           JOIN pontocontrole PC (NOLOCK)
+                             ON PC.id = SMPPOI.idpontocontrole
+						   JOIN Pessoa PO (NOLOCK)
+						     ON PO.Id = PC.IdPessoa
+                    WHERE  SMPPOI.idviagem = VI.id
+                           AND idtipopontocontrole = 1) AS SMPPO
+				OUTER apply (SELECT		 SMPPOD.id,
+                                 PC.nome,
+								 PC.Latitude,
+								 PC.Longitude,
+								 PO.CPF_CNPJ,
+                                 SMPPOD.idtipopontocontrole,
+                                 SMPPOD.datahoraprevisaoentrada,
+                                 SMPPOD.datahoraprevisaosaida,
+                                 SMPPOD.datahoraentrada,
+                                 SMPPOD.datahorasaida
+                    FROM   viagempontocontrole SMPPOD (NOLOCK)
+                           JOIN pontocontrole PC (NOLOCK)
+                             ON PC.id = SMPPOD.idpontocontrole
+						    JOIN Pessoa PO (NOLOCK)
+						     ON PO.Id = PC.IdPessoa
+                    WHERE  SMPPOD.idviagem = VI.id
+                           AND idtipopontocontrole = 4) AS SMPPD
